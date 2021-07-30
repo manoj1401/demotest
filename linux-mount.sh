@@ -1,16 +1,3 @@
-/*#!/bin/bash
-#directory=("softwareshare" "projectshare")
-#sudo apt update
-#sudo apt install samba
-#for i in "${directory[@]}"
-#do
-  #mkdir /$i
-  #sed -i "$ a [$i]\n\tpath = /$i\n\tread only = no\n\tbrowsable = yes" /etc/samba/smb.conf
-#done
-#sudo service smbd restart
-#sudo ufw allow samba
-#domainAdminPassword=Adm
-#echo -e "${domainAdminPassword}\n${domainAdminPassword}" | smbpasswd -a -s adminuser
 #!/bin/bash
 BLACKLIST="/dev/sda|/dev/sdb"
 # Base directory to hold the data* files
@@ -122,4 +109,17 @@ do
     echo "Mounting disk ${PARTITION} on ${MOUNTPOINT}"
     mount "${MOUNTPOINT}"
 done
-*/
+
+/*#!/bin/bash
+directory=("softwareshare" "projectshare")
+sudo apt update -y
+sudo apt install samba -y
+for i in "${directory[@]}"
+do
+mkdir /$i
+sed -i "$ a [$i]\n\tpath = /$i\n\tread only = no\n\tbrowsable = yes" /etc/samba/smb.conf
+done
+sudo service smbd restart
+sudo ufw allow samba
+domainAdminPassword=Adm
+echo -e "${domainAdminPassword}\n${domainAdminPassword}" | smbpasswd -a -s adminuser
