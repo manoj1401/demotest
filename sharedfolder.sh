@@ -8,7 +8,7 @@ DATA_BASE="/media"
 scan_for_new_disks() {
     # Looks for unpartitioned disks
     declare -a RET
-    DEVS=($(ls -1 /dev/sd*|egrep -v "${BLACKLIST}"|egrep -v "[0-9]$"))
+    DEVS=($(sudo ls -1 /dev/sd*|egrep -v "${BLACKLIST}"|egrep -v "[0-9]$"))
     for DEV in "${DEVS[@]}";
     do
         # Check each device if there is a "1" partition.  If not,
@@ -20,9 +20,9 @@ scan_for_new_disks() {
     done
     echo "${RET}"
 }
- 
+
 get_next_mountpoint() {
-    DIRS=($(ls -1d ${DATA_BASE}/data* 2>&1| sort --version-sort))
+    DIRS=($(sudo ls -1d ${DATA_BASE}/data* 2>&1| sort --version-sort))
     if [ -z "${DIRS[0]}" ];
     then
         echo "${DATA_BASE}/data1"
@@ -33,7 +33,7 @@ get_next_mountpoint() {
         echo "${DATA_BASE}/data${IDX}"
     fi
 }
- 
+
 add_to_fstab() {
     UUID=${1}
     MOUNTPOINT=${2}
@@ -43,25 +43,25 @@ add_to_fstab() {
         echo "Not adding ${UUID} to fstab again (it's already there!)"
     else
         LINE="UUID=\"${UUID}\"\t${MOUNTPOINT}\text4\tnoatime,nodiratime,nodev,noexec,nosuid\t1 2"
-        echo -e "${LINE}" >> /etc/fstab
+        echo -e $LINE | sudo tee -a /etc/fstab
     fi
 }
- 
+
 is_partitioned() {
 # Checks if there is a valid partition table on the
 # specified disk
-    OUTPUT=$(sfdisk -l ${1} 2>&1)
-    grep "No partitions found" "${OUTPUT}" >/dev/null 2>&1
+    OUTPUT=$(sudo sfdisk -l ${1} 2>&1)
+    sudo grep "No partitions found" "${OUTPUT}" >/dev/null 2>&1
     return "${?}"
 }
- 
+
 has_filesystem() {
     DEVICE=${1}
-    OUTPUT=$(file -L -s ${DEVICE})
-    grep filesystem <<< "${OUTPUT}" > /dev/null 2>&1
+    OUTPUT=$(sudo file -L -s ${DEVICE})
+    sudo grep filesystem <<< "${OUTPUT}" > /dev/null 2>&1
     return ${?}
 }
- 
+
 do_partition() {
 # This function creates one (1) primary partition on the
 # disk, using all available space
@@ -76,7 +76,7 @@ then
     exit 2
 fi
 }
- 
+
 if [ -z "${1}" ];
 then
     DISKS=($(scan_for_new_disks))
@@ -93,7 +93,7 @@ do
         echo "${DISK} is not partitioned, partitioning"
         do_partition ${DISK}
     fi
-    PARTITION=$(fdisk -l ${DISK}|grep -A 1 Device|tail -n 1|awk '{print $1}')
+    PARTITION=$(sudo fdisk -l ${DISK}|grep -A 1 Device|tail -n 1|awk '{print $1}')
     echo ${PARTITION}
    has_filesystem ${PARTITION}
     if [ ${?} -ne 0 ];
@@ -101,26 +101,14 @@ do
         echo "Creating filesystem on ${PARTITION}."
         #echo "Press Ctrl-C if you don't want to destroy all data on ${PARTITION}"
         #sleep 5
-        mkfs -j -t ext4 ${PARTITION}
+        sudo mkfs -j -t ext4 ${PARTITION}
     fi
     MOUNTPOINT=$(get_next_mountpoint)
     echo "Next mount point appears to be ${MOUNTPOINT}"
-    [ -d "${MOUNTPOINT}" ] || mkdir "${MOUNTPOINT}"
-    UUID=`blkid -u filesystem ${PARTITION}|awk -F "[= ]" '{print $3}'|tr -d "\""`
-    FS_TYPE=`blkid -u filesystem ${PARTITION}|awk -F "[= ]" '{print $5}'|tr -d "\""`
+    [ -d "${MOUNTPOINT}" ] || sudo mkdir "${MOUNTPOINT}"
+    UUID=`sudo blkid -u filesystem ${PARTITION}|awk -F "[= ]" '{print $3}'|tr -d "\""`
+    FS_TYPE=`sudo blkid -u filesystem ${PARTITION}|awk -F "[= ]" '{print $5}'|tr -d "\""`
     add_to_fstab "${UUID}" "${MOUNTPOINT}"
     echo "Mounting disk ${PARTITION} on ${MOUNTPOINT}"
-    mount "${MOUNTPOINT}"
-    # directory=("Softwareshare" "Projectshare")
-    # sudo apt update -y
-    # sudo apt install samba -y
-    # for i in "${directory[@]}"
-    # do
-    # mkdir /${MOUNTPOINT}/$i
-    # sed -i "$ a [/$i]\n\tpath = ${MOUNTPOINT}/$i\n\tread only = no\n\tbrowsable = yes" /etc/samba/smb.conf
-    # done
-    # sudo service smbd restart
-    # sudo ufw allow samba
-    # domainAdminPassword=Adm
-    # echo -e "${domainAdminPassword}\n${domainAdminPassword}" | smbpasswd -a -s adminuser
+    sudo mount "${MOUNTPOINT}"
 done
